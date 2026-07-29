@@ -14,62 +14,34 @@ validação usada a cada rodada.
 | Busca de rede (`api.c`/`status.c`) roda em **task FreeRTOS dedicada** | Bloquear a task do LVGL (como o firmware original em Arduino fazia) | Mantém a tela responsiva durante o fetch HTTPS (~1-2s); a task de rede só escreve em variáveis simples, quem aplica na LVGL é a task principal. |
 | Task stack sizing: **`CONFIG_ESP_MAIN_TASK_STACK_SIZE=12288`** e **`httpd_config_t.stack_size=8192`** no servidor de onboarding | Defaults do ESP-IDF (3584 / 4096 bytes) | Confirmado em hardware: qualquer task que chame `esp_http_client`/TLS precisa de pilha generosa. Ver `REFERENCIA-HARDWARE-LVGL.md` § armadilhas. |
 | `LV_CONF_PATH` definido globalmente via `idf_build_set_property` (guardado por `CMAKE_BUILD_EARLY_EXPANSION`) em `main/CMakeLists.txt` | Depender só de `-Imain` (`LV_CONF_INCLUDE_SIMPLE`) | O componente `lvgl/lvgl` só adiciona `managed_components/` ao seu próprio include path, não `main/` — arquivos internos do LVGL não achavam `lv_conf.h` sem isso. |
+| `esp_wifi_set_ps(WIFI_PS_NONE)` logo após `esp_wifi_start()` | Deixar o power-save default | Confirmado em hardware: handshakes TLS consecutivos (ex. API + status.claude.com no mesmo ciclo) falhavam com `PK verify failed` logo após uma transição de power-save do Wi-Fi. |
+| `CONFIG_LWIP_SNTP_MAX_SERVERS=2` | Deixar o default (1) | `time_sync_start()` configura 2 servidores (primário + fallback); com o default o SNTP nunca inicializava (log: `Tried to configure more servers than enabled in lwip`), deixando Tendência/Heatmap vazios pra sempre sem nenhum erro visível na tela. |
+| "Solicitar PIN no boot: Sim/Não" usa um `FIXED_PIN` interno quando desligado (não um modo "sem senha" de verdade) | Guardar o token sem criptografia quando o PIN estiver desligado | O PIN não é só trava de UI: é o material de derivação da chave AES-256-GCM (`crypto.c`). Desligar a exigência de digitar PIN a cada boot exige recriptografar o token com um PIN fixo conhecido — reduz a proteção a "ofuscação contra dump de flash", documentado explicitamente na tela e no README § Segurança. |
+| Servidor NTP primário editável (`g_ntpServer`, NVS, tela `ST_NTP_SERVER`) — aplicado só no **próximo boot** | Reinicializar o SNTP em tempo real ao salvar | `esp_netif_sntp_init()`/`time_sync_start()` só roda uma vez por sessão (guard `s_started`); reconfigurar em tempo real exigiria `esp_netif_sntp_deinit()` + reinit, sem benefício claro para uma configuração que muda raramente. Mais simples e seguro pedir reboot. |
+| Relógio do dispositivo exibido como um label separado (`g_hdrClock`) ao lado do wordmark, em vez de concatenado no label de status existente (`g_hdrStatus`) | Concatenar `"HH:MM:SS • atualizado há Xs"` num único label | O label de status já ocupa quase toda a folga horizontal entre o botão de refresh e o botão de engrenagem (~128px); concatenar o relógio ali estourava essa faixa. O wordmark (56×26px) deixa ~84px livres logo à direita, suficiente para o relógio sozinho. |
 
-## Roadmap (gerado via `/roadmap` em 2026-07-29)
+## Roadmap (atualizado via `/roadmap` em 2026-07-29)
 
 ### Contexto entendido
 
-Firmware já portado (Fases 1–4 concluídas) e em bring-up ativo em hardware real
-(COM3). Build e ambiente local funcionam; três bugs de hardware já corrigidos
-(LV_CONF_SKIP, dois stack overflows). Bloqueio atual: a API da Anthropic rejeita o
-token colado na tela de onboarding com um erro classe 401, suspeita principal é o
-`User-Agent: claude-code/2.1.5` (herdado do projeto original) estar desatualizado
-para o mecanismo de "disfarce" de OAuth do Claude Code.
+O porte está **funcionalmente completo e publicado**: Fases 1–4 do porte original
+concluídas, todos os 6 bugs de hardware corrigidos, token OAuth aceito com dados reais
+na tela, PIN/dashboard/settings/moments alcançáveis, toggle de PIN no boot
+implementado e testado, relógio no dashboard e servidor NTP editável implementados e
+confirmados pelo usuário em hardware real, repositório publicado no GitHub (3 commits,
+push confirmado). O que resta é validação complementar (não bloqueante) e manutenção
+contínua da documentação.
 
 ### Suposições
 
-- O token colado pelo usuário foi gerado corretamente via `claude setup-token` (não
-  confirmado ainda se veio de uma instalação atual do Claude Code CLI).
-- A placa permanece conectada via COM3 e na mesma rede Wi-Fi (`MateWeb_IoT`) para os
-  próximos testes.
-- Push para o GitHub só deve acontecer mediante pedido explícito do usuário (nunca
-  automático).
+- A placa permanece disponível fisicamente só com o usuário (COM3); toda validação
+  em hardware depende do usuário rodar os comandos e reportar o resultado.
+- Push/força de git e qualquer outra ação visível/irreversível continuam exigindo
+  confirmação explícita a cada vez — nunca assumidas de uma rodada para outra.
 
-### Fase A — Resolver a rejeição do token pela API
+### Fase F — Validar `tools/token_bridge.py` contra o device real (pendente)
 
-Objetivo: aceitar um token OAuth válido no onboarding sem erro 401.
-
-Tarefas:
-- Obter a versão real do Claude Code CLI (`claude --version`) — na máquina onde o
-  token foi gerado, ou instalando o CLI nesta máquina (`npm install -g
-  @anthropic-ai/claude-code`), mediante confirmação do usuário.
-- Atualizar `CLAUDE_CODE_USER_AGENT` em `main/config.h` para o valor real.
-- Opcional: melhorar `api.c` para logar o `status_code` mesmo quando
-  `esp_http_client_perform()` retorna erro no caminho de 401 (hoje esse caso cai em
-  `http_err_<N>` genérico em vez de `auth_failed`), facilitando diagnóstico futuro.
-
-Validação:
-- Recompilar, gravar, colar o mesmo token na tela de onboarding; confirmar que a
-  tela avança para "definir PIN" (`ST_SETUP_PIN`) em vez de mostrar "Token inválido".
-
-### Fase B — Validar o fluxo completo em hardware
-
-Objetivo: confirmar visualmente cada tela e interação com o dedo.
-
-Tarefas:
-- Definir o PIN (duas vezes) e confirmar que volta a pedir o PIN em um novo boot.
-- Confirmar touch em todas as telas (PIN, Wi-Fi, dashboard, ajustes).
-- Confirmar as 4 tiles do dashboard (Agora, Modelos, Janela de 5h, Ritmo) com swipe.
-- Forçar cruzar um limiar (25/50/70/100%) se possível, ou revisar a lógica visualmente.
-- Testar Ajustes: brilho, intervalo de atualização, fuso horário, idioma, apagar tudo.
-
-Validação:
-- Nenhum crash/reset inesperado durante a navegação; `docs/REGISTRO_DE_BUILDS.md`
-  atualizado com a evidência.
-
-### Fase C — Validar `tools/token_bridge.py` (opcional)
-
-Objetivo: confirmar a ponte de tokens por sessão contra o device real.
+Objetivo: confirmar a ponte de tokens por sessão contra o device já publicado.
 
 Tarefas:
 - Rodar `python3 tools/token_bridge.py --host <ip-do-device>` (ou via mDNS
@@ -80,23 +52,32 @@ Tarefas:
 Validação:
 - Saída do script sem erro; label de tokens aparece no dashboard dentro de 15 min.
 
-### Fase D — Preparar publicação no GitHub
+### Fase G — Resolver a inconsistência de maiúsculas/minúsculas em `Docs/` (pendente decisão do usuário)
 
-Objetivo: publicar o repositório em
-`https://github.com/MarceloSobral-Quallit/Claude-Usage---PanLee-SC01-Plus` — **só
-mediante pedido explícito do usuário**, uma etapa de cada vez.
+Objetivo: alinhar o nome real da pasta versionada no Git (`Docs/`, com D maiúsculo)
+com a convenção usada em todos os links relativos do projeto (`docs/`, minúsculo).
 
-Tarefas (cada uma exige confirmação separada antes de executar):
-- Revisar `git status`/`git diff` e confirmar que nenhum segredo (`wifi_cred.txt`,
-  tokens) está staged.
-- Primeiro commit.
-- Configurar o remote (`git remote add origin ...`).
-- Push (`git push -u origin main`).
+Contexto: o Windows é case-insensitive no sistema de arquivos, então todas as edições
+feitas nesta sessão usando `docs/...` (minúsculo) caíram na mesma pasta física sem
+nenhum aviso — mas o Git preserva o nome com que o arquivo foi adicionado pela
+primeira vez (`Docs/`, maiúsculo), e o GitHub (Linux, case-sensitive) respeita essa
+grafia. Isso quebra qualquer link markdown do tipo `[texto](docs/arquivo.md)` ao
+navegar o repositório publicado, e também quebraria um `git clone` num sistema de
+arquivos case-sensitive (Linux/Mac).
+
+Tarefas (exige confirmação explícita antes de executar — é uma mudança estrutural
+visível no repositório já publicado):
+- `git mv Docs Docs_tmp && git mv Docs_tmp docs` (rename em duas etapas, necessário em
+  filesystem case-insensitive) — sem alterar conteúdo de nenhum arquivo.
+- Commit dedicado só para o rename.
+- Push mediante confirmação separada.
 
 Validação:
-- `git log` mostra o commit esperado; repositório no GitHub reflete o conteúdo local.
+- `git ls-files | grep -i ^docs/` mostra todos os caminhos com `docs/` minúsculo.
+- Navegar o repositório no GitHub e confirmar que os links relativos (`docs/INDEX.md`
+  a partir do README raiz, etc.) resolvem corretamente.
 
-### Fase E — Manutenção contínua
+### Fase H — Manutenção contínua
 
 Objetivo: manter a disciplina de registro a cada mudança hardware-sensível.
 
@@ -106,22 +87,29 @@ Tarefas:
   `protocolo-ciclico-publicacao-exclusao.md`.
 - Reavaliar periodicamente se `tools/` (scripts Python) precisa de um venv dedicado
   (hoje só documentado para o ambiente ESP-IDF em si).
+- Se o `CLAUDE_CODE_USER_AGENT` em `main/config.h` for revisitado no futuro,
+  confirmar contra um `claude --version` real antes de trocar (item não-bloqueante,
+  ver `docs/README.md` § pendências).
 
 ## Riscos e mitigações
 
-- **Risco**: o `User-Agent` correto pode não resolver sozinho o 401 (pode haver
-  outro header/mecanismo do Claude Code que mudou desde o projeto original).
-  **Mitigação**: testar com `curl` fora do device primeiro (mesmo payload/headers)
-  para isolar se é problema de API/token ou de implementação do firmware.
-- **Risco**: push para o GitHub é uma ação visível/irreversível em repositório
-  público. **Mitigação**: sempre pedir confirmação explícita antes, nunca incluir no
-  escopo de uma tarefa maior implicitamente.
+- **Risco**: rename de `Docs/` → `docs/` é uma mudança visível no repositório já
+  público. **Mitigação**: só executar mediante confirmação explícita, como commit
+  isolado (sem misturar com mudança de conteúdo), e confirmar o resultado no GitHub
+  antes de considerar a Fase G concluída.
+- **Risco**: `tools/token_bridge.py` nunca foi exercitado contra o firmware atual;
+  pode haver deriva de contrato (`/window`, `/tokens`) não percebida até agora.
+  **Mitigação**: Fase F testa isso isoladamente, sem depender de mudança de firmware.
 
 ## Perguntas pendentes
 
-- Instalar o Claude Code CLI nesta máquina, ou o usuário vai checar a versão em
-  outra máquina?
+- O usuário quer que a Fase G (rename `Docs/` → `docs/`) seja executada agora, ou
+  fica registrada para uma rodada futura?
+- Vale a pena testar `tools/token_bridge.py` (Fase F) nesta rodada, já que o device
+  está com token aceito e dashboard funcionando?
 
 ## Próximo passo recomendado
 
-Fechar a Fase A (User-Agent) assim que a versão do Claude Code CLI for confirmada.
+Decidir a Fase G (rename de pasta) primeiro, por ser rápida e desbloquear links
+corretos no GitHub; em seguida, se houver interesse, validar `tools/token_bridge.py`
+(Fase F) como último item pendente antes de considerar o porte 100% fechado.
