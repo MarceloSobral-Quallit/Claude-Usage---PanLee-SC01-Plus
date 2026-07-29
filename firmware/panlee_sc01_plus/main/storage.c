@@ -126,6 +126,30 @@ void storage_save_settings(const device_settings_t *in)
     nvs_close(handle);
 }
 
+void storage_load_ntp_server(char *out, size_t out_size)
+{
+    snprintf(out, out_size, "%s", NTP_SERVER_1);
+
+    nvs_handle_t handle;
+    if (nvs_open(NVS_NAMESPACE, NVS_READONLY, &handle) != ESP_OK) {
+        return;
+    }
+    size_t len = out_size;
+    nvs_get_str(handle, "ntpsrv", out, &len);
+    nvs_close(handle);
+}
+
+void storage_save_ntp_server(const char *server)
+{
+    nvs_handle_t handle;
+    if (nvs_open(NVS_NAMESPACE, NVS_READWRITE, &handle) != ESP_OK) {
+        return;
+    }
+    nvs_set_str(handle, "ntpsrv", server);
+    nvs_commit(handle);
+    nvs_close(handle);
+}
+
 void storage_factory_reset(void)
 {
     nvs_handle_t handle;

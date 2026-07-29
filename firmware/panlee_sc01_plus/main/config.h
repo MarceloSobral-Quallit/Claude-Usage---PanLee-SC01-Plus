@@ -44,11 +44,14 @@
  * ui_onboarding.c. */
 #define OAUTH_TOKEN_PREFIX       "sk-ant-oat01-"
 
-/* NTP (necessario para os contadores de reset). pool.ntp.br = pool nacional
- * (NIC.br), menor latencia no Brasil; time.cloudflare.com como fallback
- * global (anycast, geralmente tambem tem PoP proximo). */
+/* NTP (necessario para os contadores de reset). NTP_SERVER_1 e so o DEFAULT
+ * de fabrica — o valor realmente usado fica em g_ntpServer (app_state.c),
+ * editavel em Ajustes -> Servidor NTP e persistido em NVS. pool.ntp.br =
+ * pool nacional (NIC.br), menor latencia no Brasil. time.cloudflare.com e
+ * fixo como fallback secundario (anycast, quase sempre tem PoP proximo). */
 #define NTP_SERVER_1             "pool.ntp.br"
 #define NTP_SERVER_2             "time.cloudflare.com"
+#define NTP_SERVER_MAX_LEN       64
 
 /* NVS */
 #define NVS_NAMESPACE            "claude"

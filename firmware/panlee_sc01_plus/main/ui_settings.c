@@ -128,6 +128,9 @@ static void settings_action_cb(lv_event_t *e)
     case 10:
         request_state(ST_ABOUT);
         break;
+    case 12:
+        request_state(ST_NTP_SERVER);
+        break;
     case 11:
         if (g_pinRequired) {
             /* Desligar: precisa de 2 toques (reduz a protecao do token). */
@@ -226,6 +229,9 @@ void ui_settings(void)
     }
     char pinReqTxt[48];
     pin_req_row_text(pinReqTxt, sizeof(pinReqTxt));
+    char ntpTxt[96];
+    snprintf(ntpTxt, sizeof(ntpTxt), TRS(LV_SYMBOL_GPS "  Servidor NTP: %s", LV_SYMBOL_GPS "  NTP server: %s"),
+             g_ntpServer);
 
     add_setting_row(lst, TRS(LV_SYMBOL_REFRESH "  Atualizar agora", LV_SYMBOL_REFRESH "  Refresh now"), 0, C_TEXT, NULL);
     add_setting_row(lst, pollTxt, 6, C_TEXT, &g_pollLbl);
@@ -236,6 +242,7 @@ void ui_settings(void)
     add_setting_row(lst, TRS(LV_SYMBOL_WIFI "  Configurar WiFi", LV_SYMBOL_WIFI "  Configure WiFi"), 1, C_TEXT, NULL);
     add_setting_row(lst, TRS(LV_SYMBOL_KEYBOARD "  Trocar token", LV_SYMBOL_KEYBOARD "  Change token"), 2, C_TEXT, NULL);
     add_setting_row(lst, pinReqTxt, 11, C_TEXT, &g_pinReqLbl);
+    add_setting_row(lst, ntpTxt, 12, C_TEXT, NULL);
     add_setting_row(lst, TRS(LV_SYMBOL_FILE "  Sobre", LV_SYMBOL_FILE "  About"), 10, C_TEXT, NULL);
     add_setting_row(lst, TRS(LV_SYMBOL_TRASH "  Apagar tudo", LV_SYMBOL_TRASH "  Erase everything"), 4, C_BAD, &g_wipeLbl);
 }
@@ -294,4 +301,73 @@ void ui_about(void)
     lv_obj_align(portCap, LV_ALIGN_TOP_MID, 0, 272);
     lv_obj_t *portDev = mklabel(scr, "Marcelo Sobral", &lv_font_montserrat_16, C_TEXT);
     lv_obj_align(portDev, LV_ALIGN_TOP_MID, 0, 292);
+}
+
+/* ============================================================
+ * Tela: Servidor NTP (editavel; so aplicado no PROXIMO boot, pois
+ * time_sync_start() roda uma unica vez por sessao - ver time_sync.c)
+ * ============================================================ */
+static lv_obj_t *ntp_ta = NULL, *ntp_status = NULL;
+
+static void ntp_back_cb(lv_event_t *e)
+{
+    (void)e;
+    request_state(ST_SETTINGS);
+}
+
+static void ntp_kb_cb(lv_event_t *e)
+{
+    lv_event_code_t code = lv_event_get_code(e);
+    if (code == LV_EVENT_READY) {
+        const char *val = lv_textarea_get_text(ntp_ta);
+        if (val[0]) {
+            snprintf(g_ntpServer, sizeof(g_ntpServer), "%s", val);
+            storage_save_ntp_server(g_ntpServer);
+            lv_label_set_text(ntp_status,
+                               TRS("Salvo. Sera aplicado no proximo boot.", "Saved. Applied on next boot."));
+        } else {
+            lv_label_set_text(ntp_status, TRS("Digite um endereco valido.", "Type a valid address."));
+        }
+    } else if (code == LV_EVENT_CANCEL) {
+        request_state(ST_SETTINGS);
+    }
+}
+
+void ui_ntp_server(void)
+{
+    lv_obj_t *scr = lv_screen_active();
+    lv_obj_t *title = mklabel(scr, TRS("Servidor NTP", "NTP server"), &lv_font_montserrat_20, C_TEXT);
+    lv_obj_align(title, LV_ALIGN_TOP_LEFT, 14, 12);
+
+    lv_obj_t *bk = mkbtn(scr, TRS(LV_SYMBOL_LEFT " Voltar", LV_SYMBOL_LEFT " Back"), &lv_font_montserrat_14,
+                          C_SURFACE2, C_MUTED);
+    lv_obj_set_size(bk, 100, 32);
+    lv_obj_set_ext_click_area(bk, 6);
+    lv_obj_align(bk, LV_ALIGN_TOP_RIGHT, -12, 6);
+    lv_obj_add_event_cb(bk, ntp_back_cb, LV_EVENT_CLICKED, NULL);
+
+    lv_obj_t *hint = mklabel(scr,
+                              TRS("Nome ou IP do servidor NTP primario (ex.: pool.ntp.br). "
+                                  "Secundario fixo: time.cloudflare.com.",
+                                  "Hostname or IP of the primary NTP server (e.g. pool.ntp.br). "
+                                  "Fixed secondary: time.cloudflare.com."),
+                              &lv_font_montserrat_12, C_MUTED);
+    lv_obj_set_width(hint, 452);
+    lv_label_set_long_mode(hint, LV_LABEL_LONG_WRAP);
+    lv_obj_align(hint, LV_ALIGN_TOP_MID, 0, 44);
+
+    ntp_ta = lv_textarea_create(scr);
+    lv_textarea_set_one_line(ntp_ta, true);
+    lv_textarea_set_max_length(ntp_ta, NTP_SERVER_MAX_LEN - 1);
+    lv_textarea_set_text(ntp_ta, g_ntpServer);
+    lv_obj_set_size(ntp_ta, 452, 44);
+    lv_obj_align(ntp_ta, LV_ALIGN_TOP_MID, 0, 88);
+
+    ntp_status = mklabel(scr, TRS("Toque em OK no teclado para salvar.", "Tap OK on the keyboard to save."),
+                          &lv_font_montserrat_12, C_MUTED);
+    lv_obj_align(ntp_status, LV_ALIGN_TOP_MID, 0, 136);
+
+    lv_obj_t *kb = lv_keyboard_create(scr);
+    lv_keyboard_set_textarea(kb, ntp_ta);
+    lv_obj_add_event_cb(kb, ntp_kb_cb, LV_EVENT_ALL, NULL);
 }

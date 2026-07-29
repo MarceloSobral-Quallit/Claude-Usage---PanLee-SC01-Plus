@@ -51,12 +51,14 @@ bool g_refreshing = false;
 bool g_lastFetchOk = true;
 uint32_t g_lastOkMs = 0;
 lv_obj_t *g_hdrStatus = NULL;
+lv_obj_t *g_hdrClock = NULL;
 
 int g_briIdx = 1;
 int g_pollSec = DEFAULT_POLL_SEC;
 int g_tzOffset = -3;
 int g_slideSec = 0;
 int g_heatMode = 3;
+char g_ntpServer[NTP_SERVER_MAX_LEN] = NTP_SERVER_1;
 uint32_t g_lastPollMs = 0;
 uint32_t g_lastTouchMs = 0;
 uint32_t g_lastSlideMs = 0;
@@ -130,6 +132,8 @@ void load_persisted(void)
         g_heatMode = 3;
     }
     g_pinRequired = settings.pin_required != 0;
+
+    storage_load_ntp_server(g_ntpServer, sizeof(g_ntpServer));
 }
 
 static void persist_settings(void)
@@ -340,6 +344,7 @@ void render_state(void)
     memset(&g_ui, 0, sizeof(g_ui));
     g_mascN = 0;
     g_hdrStatus = NULL;
+    g_hdrClock = NULL;
 
     lv_obj_t *scr = lv_screen_active();
     lv_obj_clean(scr);
@@ -369,6 +374,9 @@ void render_state(void)
         break;
     case ST_ABOUT:
         ui_about();
+        break;
+    case ST_NTP_SERVER:
+        ui_ntp_server();
         break;
     case ST_ERROR:
         ui_message(TRS("Falha", "Failed"), g_usage.error[0] ? g_usage.error : TRS("sem dados", "no data"), C_BAD);

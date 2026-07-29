@@ -595,6 +595,14 @@ void refresh_ui_values(void)
 
 void set_hdr_status(void)
 {
+    /* Relogio do dispositivo, ao lado do wordmark: tica a cada segundo, servindo
+     * de referencia/certificacao visual de que o NTP sincronizou corretamente. */
+    if (g_hdrClock) {
+        char clk[12];
+        fmt_now(clk, sizeof(clk));
+        lv_label_set_text(g_hdrClock, clk);
+    }
+
     if (!g_hdrStatus) {
         return;
     }
@@ -665,6 +673,9 @@ void ui_main(void)
     lv_obj_set_ext_click_area(ref, 10);
     lv_obj_align(ref, LV_ALIGN_TOP_MID, 0, 2);
     lv_obj_add_event_cb(ref, refresh_cb, LV_EVENT_CLICKED, NULL);
+
+    g_hdrClock = mklabel(scr, "--:--:--", &lv_font_montserrat_12, C_MUTED);
+    lv_obj_set_pos(g_hdrClock, 132, 18);
 
     g_hdrStatus = mklabel(scr, "", &lv_font_montserrat_12, C_MUTED);
     lv_obj_align(g_hdrStatus, LV_ALIGN_TOP_RIGHT, -92, 16);

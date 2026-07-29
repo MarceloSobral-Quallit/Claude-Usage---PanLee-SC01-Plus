@@ -47,7 +47,7 @@ extern uint8_t g_lang;
 /* ---- Estado da aplicacao ---- */
 typedef enum {
     ST_BOOT, ST_PIN, ST_SETUP_PIN, ST_WIFI, ST_TOKEN,
-    ST_LOADING, ST_MAIN, ST_SETTINGS, ST_ABOUT, ST_ERROR
+    ST_LOADING, ST_MAIN, ST_SETTINGS, ST_ABOUT, ST_NTP_SERVER, ST_ERROR
 } app_state_id_t;
 
 extern app_state_id_t g_state;
@@ -110,6 +110,7 @@ extern bool g_refreshing;
 extern bool g_lastFetchOk;
 extern uint32_t g_lastOkMs;
 extern lv_obj_t *g_hdrStatus;
+extern lv_obj_t *g_hdrClock; /* relogio no cabecalho do dashboard (referencia/certificacao do NTP) */
 
 /* ---- Configuracoes (NVS via storage.c) ---- */
 extern int g_briIdx;
@@ -117,6 +118,7 @@ extern int g_pollSec;
 extern int g_tzOffset;
 extern int g_slideSec;
 extern int g_heatMode;
+extern char g_ntpServer[NTP_SERVER_MAX_LEN]; /* servidor NTP primario editavel; aplicado no proximo boot */
 extern uint32_t g_lastPollMs;
 extern uint32_t g_lastTouchMs;
 extern uint32_t g_lastSlideMs;
@@ -220,6 +222,10 @@ void fmt_eta(uint32_t epoch, char *out, int sz);
 void fmt_clock(uint32_t epoch, char *out, int sz);
 void fmt_hm(uint32_t epoch, char *out, int sz);
 void fmt_tok(long long v, char *out, int sz);
+/* Hora local atual (HH:MM:SS) ou "--:--:--" se o relogio ainda nao
+ * sincronizou via NTP — usado no cabecalho do dashboard como referencia/
+ * certificacao visual de que o SNTP esta configurado corretamente. */
+void fmt_now(char *out, int sz);
 lv_obj_t *build_claude_mark(lv_obj_t *parent);
 lv_obj_t *tlabel(lv_obj_t *p, const lv_font_t *f, uint32_t c, int x, int y);
 lv_obj_t *tstatic(lv_obj_t *p, const char *txt, const lv_font_t *f, uint32_t c, int x, int y);
@@ -269,6 +275,7 @@ int model_mood(int i);
 /* ---- ui_settings.c ---- */
 void ui_settings(void);
 void ui_about(void);
+void ui_ntp_server(void);
 
 /* ---- ui_moments.c ---- */
 void check_thresholds(void);

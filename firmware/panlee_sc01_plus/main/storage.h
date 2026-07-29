@@ -34,6 +34,14 @@ void storage_save_settings(const device_settings_t *in);
 /* Reset de fabrica: apaga NVS ("claude" + "wifi") e remove HISTORY.DAT do SD. */
 void storage_factory_reset(void);
 
+/* ---- Servidor NTP primario (editavel em Ajustes; NVS namespace "claude") ----
+ * String separada (nao faz parte de device_settings_t, que so tem campos
+ * fixos pequenos). Se nunca foi salvo, preenche "out" com NTP_SERVER_1
+ * (config.h). Aplicado somente no PROXIMO boot (time_sync_start() so roda
+ * uma vez, ver app_main.c). */
+void storage_load_ntp_server(char *out, size_t out_size);
+void storage_save_ntp_server(const char *server);
+
 /* ---- Historico/heatmap (arquivo unico no microSD, ver config.h) ---- */
 typedef struct {
     uint32_t t;   /* epoch da amostra; 0 = relogio ainda nao sincronizado */

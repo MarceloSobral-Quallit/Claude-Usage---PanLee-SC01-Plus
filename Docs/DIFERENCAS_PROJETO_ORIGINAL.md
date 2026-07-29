@@ -53,6 +53,13 @@ não a UI/produto.
   (`sk-ant-api03-...`) em vez do token OAuth do `claude setup-token`.
 - **Ambiente de build local ao repositório** (`.idf-env/`, `tools/setup_esp_idf_env.ps1`)
   — o original usa `arduino-cli` com libs globais; aqui nada é instalado fora do repo.
+- **Relógio do dispositivo no cabeçalho do dashboard**: mostra a hora local (HH:MM:SS),
+  atualizada a cada segundo — serve de referência visual e de certificação de que o SNTP
+  sincronizou corretamente (mostra `--:--:--` enquanto não sincroniza).
+- **Ajustes → "Servidor NTP"**: o hostname/IP do servidor NTP primário passou a ser
+  editável pela tela (teclado), persistido em NVS. O padrão de fábrica é `pool.ntp.br`;
+  `time.cloudflare.com` continua fixo como fallback secundário. A alteração só é aplicada
+  no próximo boot (o SNTP do ESP-IDF só inicializa uma vez por sessão).
 
 ### Mapa de arquivos — original → porte
 

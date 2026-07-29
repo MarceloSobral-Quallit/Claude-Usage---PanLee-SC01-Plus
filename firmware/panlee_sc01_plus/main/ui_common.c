@@ -136,6 +136,18 @@ void fmt_hm(uint32_t epoch, char *out, int sz)
     strftime(out, sz, "%H:%M", &tmv);
 }
 
+void fmt_now(char *out, int sz)
+{
+    time_t now = time(NULL);
+    if (now < 1000000000L) {
+        strlcpy(out, "--:--:--", sz);
+        return;
+    }
+    struct tm tmv;
+    local_broken_down_time(now, &tmv);
+    strftime(out, sz, "%H:%M:%S", &tmv);
+}
+
 void fmt_tok(long long v, char *out, int sz)
 {
     if (v >= 100000000LL) {
