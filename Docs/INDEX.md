@@ -10,6 +10,7 @@ Ponto de entrada único para toda a documentação do projeto. Ver também o
 | Documento | Resumo |
 |---|---|
 | [`README.md`](README.md) | Escopo funcional e estado atual do projeto — o que está entregue/validado em hardware e o que ainda falta. |
+| [`DIFERENCAS_PROJETO_ORIGINAL.md`](DIFERENCAS_PROJETO_ORIGINAL.md) | Comparação completa com o Claude Usage Stick original e com o pacote inicial da placa: o que foi reaproveitado, reescrito, removido e o que é novo nesta versão — inclui mapa de arquivo por arquivo. |
 | [`DEV_PLAYBOOK.md`](DEV_PLAYBOOK.md) | Decisões técnicas (por quê LVGL 9, SD vs. partição interna, ambiente local ao repo, lições de stack overflow) e o roadmap de próximos passos. |
 | [`protocolo-ciclico-publicacao-exclusao.md`](protocolo-ciclico-publicacao-exclusao.md) | Protocolo cíclico Contrato → Implementação → Execução técnica → Auditoria, adaptado para este firmware. |
 | [`REQUISITOS_COMPILACAO.md`](REQUISITOS_COMPILACAO.md) | Ambiente de build local ao repositório (`.idf-env/`), requisitos, uso de `tools/setup_esp_idf_env.ps1` / `tools/activate-esp-idf.ps1`. |

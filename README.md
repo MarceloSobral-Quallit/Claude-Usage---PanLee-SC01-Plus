@@ -191,7 +191,9 @@ Nunca é obrigatório e nunca deve ser versionado.
 ## O que veio do projeto original
 
 Este firmware é um **porte** do Claude Usage Stick original (Arduino, display QSPI
-AXS15231B) para a placa Panlee SC01 Plus, em **ESP-IDF puro**.
+AXS15231B) para a placa Panlee SC01 Plus, em **ESP-IDF puro**. Resumo abaixo;
+comparação completa (com mapa arquivo por arquivo) em
+[`docs/DIFERENCAS_PROJETO_ORIGINAL.md`](docs/DIFERENCAS_PROJETO_ORIGINAL.md).
 
 **Reaproveitado (quase literalmente):**
 
