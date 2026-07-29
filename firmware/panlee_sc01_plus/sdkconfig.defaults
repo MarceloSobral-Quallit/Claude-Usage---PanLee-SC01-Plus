@@ -1,0 +1,66 @@
+# Target is selected with: idf.py set-target esp32s3
+
+# Placa fisica: 16 MiB flash, DIO, 80 MHz (confirmado por esptool).
+CONFIG_ESPTOOLPY_FLASHMODE_DIO=y
+CONFIG_ESPTOOLPY_FLASHFREQ_80M=y
+CONFIG_ESPTOOLPY_FLASHSIZE_16MB=y
+
+CONFIG_PARTITION_TABLE_CUSTOM=y
+CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="partitions.csv"
+CONFIG_PARTITION_TABLE_OFFSET=0x8000
+
+# A placa expoe USB Serial/JTAG nativo do ESP32-S3 para debug/console.
+CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG=y
+
+# PSRAM: 2 MiB fisicos confirmados por esptool (Quad, nao OPI). Nao e usada
+# pelo buffer do LVGL (buffer parcial fica em RAM interna — ver
+# REFERENCIA-HARDWARE-LVGL.md); mantida disponivel para uso futuro (ex.
+# buffers de JSON maiores) via heap_caps com MALLOC_CAP_SPIRAM.
+CONFIG_ESP32S3_SPIRAM_SUPPORT=y
+CONFIG_SPIRAM_MODE_QUAD=y
+CONFIG_SPIRAM_TYPE_AUTO=y
+CONFIG_SPIRAM_SIZE=-1
+CONFIG_DEFAULT_PSRAM_CLK_IO=30
+CONFIG_DEFAULT_PSRAM_CS_IO=26
+CONFIG_SPIRAM_SPEED_80M=y
+CONFIG_SPIRAM=y
+CONFIG_SPIRAM_BOOT_INIT=y
+CONFIG_SPIRAM_USE_MALLOC=y
+CONFIG_SPIRAM_MEMTEST=y
+CONFIG_SPIRAM_MALLOC_ALWAYSINTERNAL=16384
+CONFIG_SPIRAM_MALLOC_RESERVE_INTERNAL=32768
+
+# TLS para api.anthropic.com e status.claude.com: usa o bundle de CAs
+# embutido do mbedTLS (esp_crt_bundle_attach), sem precisar portar um
+# certificado customizado.
+CONFIG_MBEDTLS_CERTIFICATE_BUNDLE=y
+CONFIG_MBEDTLS_CERTIFICATE_BUNDLE_DEFAULT_FULL=y
+
+# Diagnostico util no bring-up.
+CONFIG_LOG_DEFAULT_LEVEL_INFO=y
+CONFIG_COMPILER_OPTIMIZATION_DEBUG=y
+
+# time_sync.c configura 2 servidores NTP (pool.ntp.org + time.cloudflare.com),
+# mas o default do lwIP so permite 1 (CONFIG_LWIP_SNTP_MAX_SERVERS=1) —
+# confirmado em hardware: "Tried to configure more servers than enabled in
+# lwip", esp_netif_sntp_init falhava e o relogio NUNCA sincronizava (por isso
+# as telas "Janela de 5h"/"Ritmo por hora" ficavam sempre vazias).
+CONFIG_LWIP_SNTP_MAX_SERVERS=2
+
+# app_main() faz display+touch+Wi-Fi+mDNS+HTTP server+microSD inline (sem
+# task dedicada de boot), o que estourou o default de 3584 bytes da task
+# "main" (stack overflow confirmado em hardware real). 12 KiB da folga
+# confortavel para esse init pesado.
+CONFIG_ESP_MAIN_TASK_STACK_SIZE=12288
+
+# LVGL: o componente gerenciado lvgl/lvgl tem CONFIG_LV_CONF_SKIP=y como
+# DEFAULT proprio (via Kconfig.projbuild dele) — so OMITIR a linha aqui nao
+# basta, o default 'y' vence. Apesar do nome sugerir "pular a config do
+# Kconfig e usar meu lv_conf.h", e o CONTRARIO: LV_CONF_SKIP manda o
+# lv_conf_internal.h PULAR o #include "lv_conf.h" do projeto (main/lv_conf.h)
+# e usar so os defaults gerados do Kconfig (so a fonte montserrat_14, etc.) —
+# confirmado build-a-build (ver REFERENCIA-HARDWARE-LVGL.md, secao
+# "armadilhas"). Por isso desabilitamos explicitamente abaixo (a sintaxe
+# "# ... is not set" e a forma do Kconfig de forcar um bool para off mesmo
+# quando o default do componente e 'y'):
+# CONFIG_LV_CONF_SKIP is not set

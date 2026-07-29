@@ -1,0 +1,4 @@
+cmake_minimum_required(VERSION 3.16)
+
+include($ENV{IDF_PATH}/tools/cmake/project.cmake)
+project(claude_usage_panlee_sc01_plus)

@@ -1,0 +1,32 @@
+# Credenciais locais — nunca versionar
+wifi_cred.txt
+my-token.txt
+
+# Material de referência local (não faz parte do repo publicado)
+SRC/
+TEMP/
+
+# Ambiente ESP-IDF local ao repo (toolchain + venv + checkout do esp-idf) —
+# criado por tools/setup_esp_idf_env.ps1, nunca versionado (ver docs/REQUISITOS_COMPILACAO.md)
+.idf-env/
+
+# ESP-IDF build artifacts
+firmware/**/build/
+firmware/**/build-*/
+firmware/**/managed_components/
+firmware/**/dependencies.lock
+firmware/**/sdkconfig
+firmware/**/sdkconfig.old
+firmware/**/main/wifi_credentials.h
+firmware/**/main/wifi_dev_seed.h
+
+# Ferramentas Python — sempre usar venv local, nunca Python/pip global
+.venv/
+venv/
+tools/__pycache__/
+*.pyc
+
+# Diversos
+*.zip
+.DS_Store
+Thumbs.db

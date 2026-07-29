@@ -1,0 +1,10 @@
+#pragma once
+
+/* Gerado pelo CMake a partir de wifi_cred.txt na raiz do repo (opcional,
+ * nunca versionado — ver .gitignore). Serve APENAS como conveniencia de
+ * desenvolvimento: se presente, wifi_manager_begin() pre-semeia esta rede
+ * na lista de redes salvas (NVS) no primeiro boot, evitando digitar a
+ * senha na tela a cada gravacao durante o desenvolvimento. O onboarding
+ * por toque continua funcionando normalmente com ou sem este arquivo. */
+#define WIFI_DEV_SEED_SSID     "@WIFI_SEED_SSID@"
+#define WIFI_DEV_SEED_PASSWORD "@WIFI_SEED_PASSWORD@"
